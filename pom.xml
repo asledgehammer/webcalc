@@ -69,14 +69,17 @@
             <systemPath>${project.basedir}/lib/jar/cssparser-0.9.30.jar</systemPath>
         </dependency>
         <dependency>
-            <groupId>something</groupId>
-            <artifactId>cssparser</artifactId>
-            <version>0.9.30</version>
-            <classifier>javadoc</classifier>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/lib/jar/cssparser-0.9.30-javadoc.jar</systemPath>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>13.0</version>
         </dependency>
-
+        <!-- Source: https://mvnrepository.com/artifact/org.joml/joml -->
+        <dependency>
+            <groupId>org.joml</groupId>
+            <artifactId>joml</artifactId>
+            <version>1.10.8</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
     <properties>
         <maven.compiler.source>25</maven.compiler.source>
