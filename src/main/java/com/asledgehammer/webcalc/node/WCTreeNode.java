@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TreeNode<E extends TreeNode<E>> extends Node<E> {
+public class WCTreeNode<E extends WCTreeNode<E>> extends WCNode<E> {
 
   /**
    * Reaches upward until the node has no parent.

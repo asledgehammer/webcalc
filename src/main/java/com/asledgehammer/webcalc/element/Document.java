@@ -1,14 +1,14 @@
 package com.asledgehammer.webcalc.element;
 
 import com.asledgehammer.webcalc.layout.Bounds;
-import com.asledgehammer.webcalc.node.NodeContainer;
+import com.asledgehammer.webcalc.node.WCNodeContainer;
 import com.asledgehammer.webcalc.render.ElementRenderable;
 import com.asledgehammer.webcalc.util.DirtySupported;
 import lombok.NonNull;
 
 import java.util.Objects;
 
-public class Document extends NodeContainer<Element> implements DirtySupported {
+public class Document extends WCNodeContainer<Element> implements DirtySupported {
 
   private Element head;
   private Element body;

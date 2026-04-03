@@ -1,11 +1,11 @@
 package com.asledgehammer.webcalc.element;
 
-import com.asledgehammer.webcalc.node.TreeNode;
+import com.asledgehammer.webcalc.node.WCTreeNode;
 import com.asledgehammer.webcalc.render.ElementRenderable;
 import lombok.Getter;
 import lombok.NonNull;
 
-public class Element extends TreeNode<Element> {
+public class Element extends WCTreeNode<Element> {
 
   @Getter private final String tag;
 

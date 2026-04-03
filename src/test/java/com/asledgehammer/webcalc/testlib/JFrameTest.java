@@ -1,4 +1,4 @@
-package com.asledgehammer.webcalc.test;
+package com.asledgehammer.webcalc.testlib;
 
 import com.asledgehammer.webcalc.element.Window;
 import com.asledgehammer.webcalc.layout.Bounds;

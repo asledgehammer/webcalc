@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public abstract class Node<E extends Node<E>> implements DirtySupported {
+public abstract class WCNode<E extends WCNode<E>> implements DirtySupported {
 
   @Nullable List<E> children;
   @Nullable E parent;
