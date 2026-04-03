@@ -119,36 +119,6 @@ public class Marcher {
     return new int[] {rowIndexes.length, (cIndex - rowIndexes[rowIndexes.length - 1]) + 1};
   }
 
-  /**
-   * @param cIndex The starting index to read.
-   * @return -1 is false. Positive integer with length if true.
-   */
-  byte isNewline(int cIndex) {
-    char curr = contents.charAt(cIndex);
-    switch (curr) {
-      // BEHAVIOR: Normal, 1-char-length constant return characters.
-      case '\f', '\n' -> {
-        return 1;
-      }
-      // BEHAVIOR: Check if the return is a two-char pattern.
-      case '\r' -> {
-        int cIndexNext = cIndex + 1;
-        if (contents.length() > cIndexNext && contents.charAt(cIndexNext) == '\n') {
-          return 2;
-        }
-        return 1;
-      }
-    }
-    return -1;
-  }
-
-  boolean isNewlineChar(int index) {
-    return switch (contents.charAt(index)) {
-      case '\f', '\n', '\r' -> true;
-      default -> false;
-    };
-  }
-
   boolean isWhiteSpaceChar(int index) {
     return switch (contents.charAt(index)) {
       case '\f', '\n', '\r', '\t', ' ' -> true;
