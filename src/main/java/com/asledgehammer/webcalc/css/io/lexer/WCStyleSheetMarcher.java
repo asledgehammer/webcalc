@@ -1,7 +1,7 @@
 package com.asledgehammer.webcalc.css.io.lexer;
 
-import com.asledgehammer.webcalc.css.io.WCFileReferenceBlockImpl;
-import com.asledgehammer.webcalc.css.io.lexer.token.WCStyleSheetToken;
+import com.asledgehammer.webcalc.io.token.WCReferenceRangeImpl;
+import com.asledgehammer.webcalc.css.io.lexer.token.WCReferencedToken;
 import com.asledgehammer.webcalc.css.io.lexer.token.WCWhiteSpaceTokenImpl;
 import com.asledgehammer.webcalc.io.MultiLineContext;
 import lombok.NonNull;
@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class WCStyleSheetMarcher {
-  final List<WCStyleSheetToken> tokens = new ArrayList<>();
+  final List<WCReferencedToken> tokens = new ArrayList<>();
 
   final MultiLineContext context;
   private final URL path;
@@ -31,7 +31,7 @@ public class WCStyleSheetMarcher {
   }
 
   void march2() {
-    
+
   }
 
   /** NOTE: Assumes EOS is checked prior to call. */
@@ -53,13 +53,13 @@ public class WCStyleSheetMarcher {
     if (len != 0) {
       int[] start = context.getRowCol(indexStart);
       int[] end = context.getRowCol(indexEnd);
-      val ref = new WCFileReferenceBlockImpl(path, indexStart, len, start, end);
+      val ref = new WCReferenceRangeImpl(path, indexStart, len, start, end);
       tokens.add(new WCGenericTokenImpl(ref, context.sub(indexStart, indexEnd)));
       offset = indexEnd;
     } else if (context.isEOS(indexEnd + 1)) {
       int[] start = context.getRowCol(indexStart);
       int[] end = context.getRowCol(indexEnd + 1);
-      val ref = new WCFileReferenceBlockImpl(path, indexStart, len + 1, start, end);
+      val ref = new WCReferenceRangeImpl(path, indexStart, len + 1, start, end);
       tokens.add(new WCGenericTokenImpl(ref, context.sub(indexStart, indexEnd + 1)));
       offset = indexEnd + 1;
     }
@@ -83,13 +83,13 @@ public class WCStyleSheetMarcher {
     if (len != 0) {
       int[] start = context.getRowCol(indexStart);
       int[] end = context.getRowCol(indexEnd);
-      val ref = new WCFileReferenceBlockImpl(path, indexStart, len, start, end);
+      val ref = new WCReferenceRangeImpl(path, indexStart, len, start, end);
       tokens.add(new WCWhiteSpaceTokenImpl(ref, context.sub(indexStart, indexEnd)));
       offset = indexEnd;
     } else if (context.isEOS(indexEnd + 1)) {
       int[] start = context.getRowCol(indexStart);
       int[] end = context.getRowCol(indexEnd + 1);
-      val ref = new WCFileReferenceBlockImpl(path, indexStart, len + 1, start, end);
+      val ref = new WCReferenceRangeImpl(path, indexStart, len + 1, start, end);
       tokens.add(new WCWhiteSpaceTokenImpl(ref, context.sub(indexStart, indexEnd + 1)));
       offset = indexEnd + 1;
     }

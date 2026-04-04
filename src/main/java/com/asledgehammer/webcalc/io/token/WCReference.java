@@ -1,10 +1,10 @@
-package com.asledgehammer.webcalc.css.io;
+package com.asledgehammer.webcalc.io.token;
 
 import org.jetbrains.annotations.Nullable;
 
 import java.net.URL;
 
-public interface WCFileReference {
+public interface WCReference {
     @Nullable
     URL getPath();
 

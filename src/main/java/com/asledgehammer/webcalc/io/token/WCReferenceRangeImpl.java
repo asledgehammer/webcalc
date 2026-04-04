@@ -1,17 +1,17 @@
-package com.asledgehammer.webcalc.css.io;
+package com.asledgehammer.webcalc.io.token;
 
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.URL;
 
-public class WCFileReferenceBlockImpl extends WCFileReferenceImpl implements WCFileReferenceBlock {
+public class WCReferenceRangeImpl extends WCReferenceImpl implements WCReferenceRange {
 
   @Getter private final int rowEnd;
   @Getter private final int colEnd;
   @Getter private final int length;
 
-  public WCFileReferenceBlockImpl(
+  public WCReferenceRangeImpl(
       @Nullable final URL path,
       final int index,
       final int length,
@@ -30,7 +30,7 @@ public class WCFileReferenceBlockImpl extends WCFileReferenceImpl implements WCF
     }
   }
 
-  public WCFileReferenceBlockImpl(
+  public WCReferenceRangeImpl(
       final @Nullable URL path,
       final int index,
       final int length,

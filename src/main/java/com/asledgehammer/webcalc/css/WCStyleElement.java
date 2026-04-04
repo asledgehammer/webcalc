@@ -1,6 +1,6 @@
 package com.asledgehammer.webcalc.css;
 
-import com.asledgehammer.webcalc.css.io.WCFileReference;
+import com.asledgehammer.webcalc.io.token.WCReference;
 import org.jetbrains.annotations.Nullable;
 
 public interface WCStyleElement {
@@ -8,7 +8,7 @@ public interface WCStyleElement {
      * @return If provided, the reference & range of the element on a stylesheet. Otherwise <code>null</code>.
      */
     @Nullable
-    WCFileReference getReference();
+    WCReference getReference();
 
-    void setReference(@Nullable WCFileReference reference);
+    void setReference(@Nullable WCReference reference);
 }

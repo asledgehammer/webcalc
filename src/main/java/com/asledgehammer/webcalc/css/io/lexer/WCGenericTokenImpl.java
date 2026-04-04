@@ -1,18 +1,19 @@
 package com.asledgehammer.webcalc.css.io.lexer;
 
-import com.asledgehammer.webcalc.css.io.WCFileReferenceBlock;
-import com.asledgehammer.webcalc.css.io.lexer.token.WCStyleSheetToken;
-import com.asledgehammer.webcalc.css.io.lexer.token.WCStyleSheetTokenImpl;
+import com.asledgehammer.webcalc.io.token.WCReferenceRange;
+import com.asledgehammer.webcalc.css.io.lexer.token.WCReferencedToken;
+import com.asledgehammer.webcalc.css.io.lexer.token.WCReferencedTokenImpl;
 import lombok.NonNull;
 import org.jetbrains.annotations.NotNull;
 
-class WCGenericTokenImpl extends WCStyleSheetTokenImpl implements WCStyleSheetToken {
-  WCGenericTokenImpl(@NotNull WCFileReferenceBlock reference, @NonNull String contents) {
-    super(reference, contents);
+class WCGenericTokenImpl extends WCReferencedTokenImpl implements WCReferencedToken {
+  WCGenericTokenImpl(@NotNull WCReferenceRange reference, @NonNull String contents) {
+    super(reference, contents, true);
   }
 
   @Override
   public String toString() {
-    return "\"" + getRaw() + "\"";
+    return "\"" + getContents() + "\"";
   }
+
 }

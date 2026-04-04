@@ -1,24 +1,24 @@
-package com.asledgehammer.webcalc.css.io;
+package com.asledgehammer.webcalc.io.token;
 
 import org.jetbrains.annotations.Nullable;
 
 import java.net.URL;
 
-public class WCFileReferenceImpl implements WCFileReference {
+public class WCReferenceImpl implements WCReference {
 
   private final @Nullable URL path;
   private final int index;
   private final int rowStart;
   private final int colStart;
 
-  public WCFileReferenceImpl(@Nullable URL path, int index, int rowStart, int colStart) {
+  public WCReferenceImpl(@Nullable URL path, int index, int rowStart, int colStart) {
     this.path = path;
     this.index = index;
     this.rowStart = rowStart;
     this.colStart = colStart;
   }
 
-  public WCFileReferenceImpl(@Nullable URL path, int index, int[] start) {
+  public WCReferenceImpl(@Nullable URL path, int index, int[] start) {
     this.path = path;
     this.index = index;
 
