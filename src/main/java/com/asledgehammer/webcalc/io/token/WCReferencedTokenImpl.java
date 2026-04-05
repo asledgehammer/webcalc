@@ -1,6 +1,5 @@
-package com.asledgehammer.webcalc.css.io.lexer.token;
+package com.asledgehammer.webcalc.io.token;
 
-import com.asledgehammer.webcalc.io.token.WCReferenceRange;
 import lombok.Getter;
 import lombok.NonNull;
 
@@ -24,5 +23,10 @@ public class WCReferencedTokenImpl implements WCReferencedToken {
     @Override
     public boolean isGeneric() {
         return generic;
+    }
+
+    @Override
+    public String toString() {
+        return getReference() + " :: \"" + getContents().replaceAll("\r\n", "\\\\r\\\\n").replaceAll("\r", "\\\\r").replaceAll("\n", "\\\\n").replaceAll("\t", "\\\\t") + "\"";
     }
 }

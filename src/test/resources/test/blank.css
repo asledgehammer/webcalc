@@ -1,5 +1,12 @@
 #search {
+    /* Line in */
     background-color: red;
     color: white;
-    padding: 16px;
+    padding:
+            /* weird line comment */
+            16px;
 }
+/* Line
+trail */
+
+/* Unfinished
