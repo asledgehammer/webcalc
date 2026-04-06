@@ -70,6 +70,20 @@ public class MultiLineContext {
     return result;
   }
 
+  public int getNextNewlineIndex(int index) {
+    if (rowIndexes.length <= 1 || content.isEmpty()) return -1;
+    for (int next : rowIndexes) {
+      if (index < next) {
+        return next;
+      }
+    }
+    throw new RuntimeException("There be dragons.");
+  }
+
+  public boolean isLastLine(int index) {
+    return rowIndexes.length <= 1 || rowIndexes[rowIndexes.length - 1] <= index;
+  }
+
   public boolean isEOS(int index) {
     return index >= length;
   }

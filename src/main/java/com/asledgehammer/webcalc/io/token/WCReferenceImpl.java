@@ -39,14 +39,20 @@ public class WCReferenceImpl implements WCReference {
 
   @Override
   public String toString() {
+    return toString(false);
+  }
+
+  public String toString(boolean showPath) {
     StringBuilder result = new StringBuilder();
     result.append("[");
-    if (path != null) {
-      result.append(path);
-    } else {
-      result.append("anonymous");
+    if (showPath) {
+      if (path != null) {
+        result.append(path);
+      } else {
+        result.append("anonymous");
+      }
+      result.append(": ");
     }
-    result.append(": ");
     result.append(rowStart);
     result.append(", ");
     result.append(colStart);

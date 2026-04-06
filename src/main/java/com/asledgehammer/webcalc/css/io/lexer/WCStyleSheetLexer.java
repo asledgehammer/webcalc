@@ -1,6 +1,8 @@
 package com.asledgehammer.webcalc.css.io.lexer;
 
+import com.asledgehammer.webcalc.css.io.token.CSSTokenType;
 import com.asledgehammer.webcalc.css.io.token.WCSSCommentBlockToken;
+import com.asledgehammer.webcalc.css.io.token.WCSSToken;
 import com.asledgehammer.webcalc.io.WCParseError;
 import com.asledgehammer.webcalc.io.token.WCReferencedToken;
 import lombok.NonNull;
@@ -36,7 +38,7 @@ public class WCStyleSheetLexer {
     marcher.march();
     List<WCParseError> errors = marcher.getErrors();
     List<WCSSCommentBlockToken> comments = marcher.getComments();
-    List<WCReferencedToken> tokens = marcher.getTokens();
+    List<WCSSToken> tokens = marcher.getTokens().stream().filter(e -> !e.isWhiteSpace()).toList();
     List<int[]> rangesIgnored = marcher.getRangesIgnored();
 
     if (!errors.isEmpty()) {
@@ -44,17 +46,17 @@ public class WCStyleSheetLexer {
       errors.forEach(System.out::println);
     }
     if (!comments.isEmpty()) {
-      System.out.println("\n\nComment Block(s) (" + comments.size() + "): ");
+      System.out.println("\nComment Block(s) (" + comments.size() + "): ");
       comments.forEach(System.out::println);
     }
 
     if (!rangesIgnored.isEmpty()) {
-      System.out.println("\n\nIgnored Region(s) (" + rangesIgnored.size() + "): ");
+      System.out.println("\nIgnored Region(s) (" + rangesIgnored.size() + "): ");
       rangesIgnored.forEach(e -> System.out.println(e[0] + " -> " + e[1]));
     }
 
     if (!tokens.isEmpty()) {
-      System.out.println("\n\nToken(s) (" + tokens.size() + "): ");
+      System.out.println("\nToken(s) (" + tokens.size() + "): ");
       tokens.forEach(System.out::println);
     }
   }
