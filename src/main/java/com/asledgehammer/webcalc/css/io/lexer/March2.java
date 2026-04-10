@@ -17,6 +17,8 @@ import static com.asledgehammer.webcalc.css.CSSUtils.PATTERN_NEWLINE;
 
 public class March2 implements Runnable {
 
+  private static final Pattern REGEX_IDENT_CODE_POINT = Pattern.compile("[A-Za-z0-9_\\-]");
+  private static final Pattern REGEX_IDENT_START_CODE_POINT = Pattern.compile("[A-Za-z_]");
   private static final int[] BLANK_ROW_COL = new int[] {1, 1};
 
   @Getter private final List<WCSSCommentBlockToken> comments = new ArrayList<>();
@@ -42,7 +44,6 @@ public class March2 implements Runnable {
 
   public void run() {
     marchComments();
-    //    marchStrings();
     marchTokens();
   }
 
@@ -82,67 +83,6 @@ public class March2 implements Runnable {
     offset = 0;
   }
 
-  /*
-  private void marchStrings() {
-    marchStrings('"');
-    marchStrings('\'');
-  }
-
-  private void marchStrings(char encasingCharacter) {
-    int indexStart = 0;
-    int indexEnd;
-    int indexNewLine;
-
-    while ((indexStart = contents.indexOf(encasingCharacter, indexStart)) != -1) {
-
-      // Cycle through escaped double-quotes inside strings.
-      do {
-        indexEnd = contents.indexOf(encasingCharacter, indexStart + 1);
-      } while (indexEnd > 0 && indexEnd < len && contents.charAt(indexEnd - 1) == '\\');
-
-      indexNewLine = getNextNewlineIndex(indexStart);
-
-      // Make sure the string doesn't contain any line-returns.
-      if (indexNewLine != -1 && (indexEnd == -1 || indexNewLine < indexEnd)) {
-        val string = contents.substring(indexStart, indexNewLine - 1);
-        val start = getRowCol(indexStart);
-        val end = getRowCol(indexNewLine);
-        val ref = new WCReferenceRangeImpl(path, indexStart, string.length(), start, end);
-        rangesIgnored.add(new int[] {indexStart, indexNewLine});
-        errors.add(new WCParseError(ref, "Broken string"));
-        strings.add(new WCSSStringTokenImpl(ref, string, encasingCharacter, true));
-        indexStart = indexNewLine + 1;
-        continue;
-      }
-
-      // EOS
-      if (indexEnd == -1) {
-        indexEnd = len;
-        val string = contents.substring(indexStart, len - 1);
-        val start = getRowCol(indexStart);
-        val end = getRowCol(indexEnd);
-        val ref = new WCReferenceRangeImpl(path, indexStart, string.length(), start, end);
-        rangesIgnored.add(new int[] {indexStart, indexEnd});
-        errors.add(new WCParseError(ref, "Unclosed string value"));
-        strings.add(
-            new WCSSStringTokenImpl(
-                ref, contents.substring(indexStart, indexEnd), encasingCharacter, true));
-        break;
-      }
-
-      // Retain outer raw indexed range.
-      indexEnd += 1;
-      rangesIgnored.add(new int[] {indexStart, indexEnd});
-      val string = contents.substring(indexStart, indexEnd);
-      val start = getRowCol(indexStart);
-      val end = getRowCol(indexEnd);
-      val ref = new WCReferenceRangeImpl(path, indexStart, string.length(), start, end);
-      strings.add(new WCSSStringTokenImpl(ref, string, encasingCharacter, string.contains("\r\n")));
-      indexStart = indexEnd;
-    }
-    offset = 0;
-  } */
-
   private void marchTokens() {
     while (offset < len) {
 
@@ -155,9 +95,17 @@ public class March2 implements Runnable {
       // Consume as much whitespace as possible.
       consumeWhitespace();
 
+      // Ignore comment ranges.
+      if (isIgnoredIndex(offset)) {
+        offset = skipIgnoredIndex(offset);
+        continue;
+      }
+
       // Any non-whitespace character starts the next token.
       char curr = contents.charAt(offset);
-      if (curr == '"') {
+      if (contents.indexOf("/*", offset) == offset) {
+        offset = skipIgnoredIndex(offset + 2);
+      } else if (curr == '"') {
         consumeStringToken('"');
       } else if (curr == '#') {
         consumeHashToken();
@@ -227,9 +175,19 @@ public class March2 implements Runnable {
         consumeCurlyBracketToken(true);
       } else if (curr == '}') {
         consumeCurlyBracketToken(false);
-      } else if (isNumericChar(curr)) {
+      } else if (isNumericChar(offset)) {
+        // Catch for comments range.
+        if (isIgnoredIndex(offset)) {
+          offset = skipIgnoredIndex(offset);
+          continue;
+        }
         consumeNumericToken(false);
       } else if (isIdentStartSequence(offset)) {
+        // Catch for comments range.
+        if (isIgnoredIndex(offset)) {
+          offset = skipIgnoredIndex(offset);
+          continue;
+        }
         consumeIdentityToken();
       } else {
         // Catch for comments range.
@@ -267,14 +225,11 @@ public class March2 implements Runnable {
     val end = getRowCol(offset + len);
     val ref = new WCReferenceRangeImpl(path, offset, len, start, end);
     tokens.add(new WCSSNumericTokenImpl(ref, value));
-    offset += value.length();
+    this.offset += value.length();
   }
 
-  private static final Pattern REGEX_NUMERIC = Pattern.compile("[0-9]");
-
   private boolean isNumericChar(int offset) {
-    val curr = contents.charAt(offset);
-    return REGEX_NUMERIC.matcher("" + curr).matches();
+    return Character.isDigit(contents.charAt(offset));
   }
 
   private void consumeCDOToken() {
@@ -298,6 +253,9 @@ public class March2 implements Runnable {
   }
 
   private void consumeDelimiterToken(@NotNull String delimiter) {
+    if (delimiter.equals("1")) {
+      throw new RuntimeException(delimiter);
+    }
     val start = getRowCol(offset);
     val end = getRowCol(offset + 1);
     val ref = new WCReferenceRangeImpl(path, offset, 1, start, end);
@@ -378,7 +336,6 @@ public class March2 implements Runnable {
     } while (offset < len);
     if (builder.isEmpty()) return;
     val value = builder.toString();
-    System.out.println("WHITESPACE: \"" + value + "\"");
     val len = value.length();
     val end = getRowCol(offset);
     val ref = new WCReferenceRangeImpl(path, offset, len, start, end);
@@ -422,7 +379,7 @@ public class March2 implements Runnable {
     char curr;
     do {
       curr = contents.charAt(offset);
-      if (!isNumericChar(curr)) {
+      if (!isNumericChar(offset)) {
         break;
       }
       builder.append(curr);
@@ -462,7 +419,6 @@ public class March2 implements Runnable {
     offset--;
     val end = getRowCol(offset);
     val value = builder.toString();
-    System.out.println("Identity: \"" + value + "\"");
     val len = value.length();
     val ref = new WCReferenceRangeImpl(path, offset, len, start, end);
     tokens.add(new WCSSIdentTokenImpl(ref, value));
@@ -630,9 +586,6 @@ public class March2 implements Runnable {
     }
     return indexes;
   }
-
-  private static final Pattern REGEX_IDENT_CODE_POINT = Pattern.compile("[A-Za-z0-9_\\-]");
-  private static final Pattern REGEX_IDENT_START_CODE_POINT = Pattern.compile("[A-Za-z_]");
 
   private static boolean isIdentStartCodePoint(char c) {
     return REGEX_IDENT_START_CODE_POINT.matcher("" + c).matches() || isNonASCIICodePoint(c);
