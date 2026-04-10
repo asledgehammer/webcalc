@@ -34,30 +34,36 @@ public class WCStyleSheetLexer {
   }
 
   private static void lex(@Nullable URL path, String contents) {
-    WCStyleSheetMarcher marcher = new WCStyleSheetMarcher(path, contents);
-    marcher.march();
-    List<WCParseError> errors = marcher.getErrors();
-    List<WCSSCommentBlockToken> comments = marcher.getComments();
-    List<WCSSToken> tokens = marcher.getTokens().stream().filter(e -> !e.isWhiteSpace()).toList();
-    List<int[]> rangesIgnored = marcher.getRangesIgnored();
 
-    if (!errors.isEmpty()) {
-      System.out.println("Errors (" + errors.size() + "): ");
-      errors.forEach(System.out::println);
-    }
-    if (!comments.isEmpty()) {
-      System.out.println("\nComment Block(s) (" + comments.size() + "): ");
-      comments.forEach(System.out::println);
-    }
+    March2 marcher = new March2(path, contents);
+    marcher.run();
+    marcher.debug();
 
-    if (!rangesIgnored.isEmpty()) {
-      System.out.println("\nIgnored Region(s) (" + rangesIgnored.size() + "): ");
-      rangesIgnored.forEach(e -> System.out.println(e[0] + " -> " + e[1]));
-    }
-
-    if (!tokens.isEmpty()) {
-      System.out.println("\nToken(s) (" + tokens.size() + "): ");
-      tokens.forEach(System.out::println);
-    }
+    //    WCStyleSheetMarcher marcher = new WCStyleSheetMarcher(path, contents);
+    //
+    //    List<WCParseError> errors = marcher.getErrors();
+    //    List<WCSSCommentBlockToken> comments = marcher.getComments();
+    //    List<WCSSToken> tokens = marcher.getTokens().stream().filter(e ->
+    // !e.isWhiteSpace()).toList();
+    //    List<int[]> rangesIgnored = marcher.getRangesIgnored();
+    //
+    //    if (!errors.isEmpty()) {
+    //      System.out.println("Errors (" + errors.size() + "): ");
+    //      errors.forEach(System.out::println);
+    //    }
+    //    if (!comments.isEmpty()) {
+    //      System.out.println("\nComment Block(s) (" + comments.size() + "): ");
+    //      comments.forEach(System.out::println);
+    //    }
+    //
+    //    if (!rangesIgnored.isEmpty()) {
+    //      System.out.println("\nIgnored Region(s) (" + rangesIgnored.size() + "): ");
+    //      rangesIgnored.forEach(e -> System.out.println(e[0] + " -> " + e[1]));
+    //    }
+    //
+    //    if (!tokens.isEmpty()) {
+    //      System.out.println("\nToken(s) (" + tokens.size() + "): ");
+    //      tokens.forEach(System.out::println);
+    //    }
   }
 }

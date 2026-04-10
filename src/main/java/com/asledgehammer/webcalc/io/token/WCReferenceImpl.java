@@ -43,6 +43,7 @@ public class WCReferenceImpl implements WCReference {
   }
 
   public String toString(boolean showPath) {
+
     StringBuilder result = new StringBuilder();
     result.append("[");
     if (showPath) {
@@ -51,11 +52,11 @@ public class WCReferenceImpl implements WCReference {
       } else {
         result.append("anonymous");
       }
-      result.append(": ");
+      result.append(":");
     }
-    result.append(rowStart);
-    result.append(", ");
-    result.append(colStart);
+    result.append(shiftRight(rowStart, 4));
+    result.append(",");
+    result.append(shiftRight(colStart, 4));
     result.append("]");
     return result.toString();
   }
@@ -79,5 +80,13 @@ public class WCReferenceImpl implements WCReference {
   @Override
   public int getStartCol() {
     return colStart;
+  }
+
+  private static String shiftRight(int value, int spaces) {
+    StringBuilder s = new StringBuilder("" + value);
+    while (s.length() < spaces) {
+      s.insert(0, " ");
+    }
+    return s.toString();
   }
 }

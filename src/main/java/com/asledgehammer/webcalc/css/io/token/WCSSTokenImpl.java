@@ -23,6 +23,11 @@ public class WCSSTokenImpl extends WCReferencedTokenImpl implements WCSSToken {
   }
 
   @Override
+  public String toString() {
+    return getReference() + "[" + getType().name() + "] :: \"" + getContents().replaceAll("\r\n", "\\\\r\\\\n").replaceAll("\r", "\\\\r").replaceAll("\n", "\\\\n").replaceAll("\t", "\\\\t") + "\"";
+  }
+
+  @Override
   public boolean isWhiteSpace() {
     return whitespace;
   }

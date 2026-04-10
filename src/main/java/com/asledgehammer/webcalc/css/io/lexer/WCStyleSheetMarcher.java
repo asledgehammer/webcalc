@@ -2,6 +2,7 @@ package com.asledgehammer.webcalc.css.io.lexer;
 
 import com.asledgehammer.webcalc.css.io.token.*;
 import com.asledgehammer.webcalc.io.WCParseError;
+import com.asledgehammer.webcalc.io.token.WCReferenceRange;
 import com.asledgehammer.webcalc.io.token.WCReferenceRangeImpl;
 import com.asledgehammer.webcalc.io.MultiLineContext;
 import lombok.Getter;
@@ -53,13 +54,13 @@ public class WCStyleSheetMarcher {
   void march() {
     marchComments();
     marchStrings();
-    while (!context.isEOS(offset)) {
-      if (isIgnoredIndex(offset)) {
-        offset = skipIgnoredIndex(offset);
-        continue;
-      }
-      untilWhiteSpace();
-    }
+//    while (!context.isEOS(offset)) {
+//      if (isIgnoredIndex(offset)) {
+//        offset = skipIgnoredIndex(offset);
+//        continue;
+//      }
+//      untilWhiteSpace();
+//    }
     refine();
     combine();
   }
@@ -254,4 +255,25 @@ public class WCStyleSheetMarcher {
       default -> false;
     };
   }
+
+class Something {
+  boolean keepGoing = true;
+  WCReferenceRange ref;
+  String contents;
+  int len;
+  int tokenIndex = 0;
+  int indexContents;
+
+  char curr;
+
+  Something(List<WCSSToken> tokens) {
+    keepGoing = !tokens.isEmpty();
+  }
+
+  void next() {
+    if (indexContents >= len) {
+
+    }
+  }
+}
 }

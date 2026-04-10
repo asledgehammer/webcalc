@@ -23,8 +23,8 @@ public class WCSSCommentBlockTokenImpl extends WCSSTokenImpl implements WCSSComm
   @Override
   public String toString() {
     return getReference()
-        + " :: \""
-        + getComment()
+        + "[BLOCK_COMMENT] :: \""
+        + getContents()
             .replaceAll("\r\n", "\\\\r\\\\n")
             .replaceAll("\r", "\\\\r")
             .replaceAll("\n", "\\\\n")
