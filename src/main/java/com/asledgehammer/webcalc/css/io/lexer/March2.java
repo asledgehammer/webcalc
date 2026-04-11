@@ -7,10 +7,10 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.val;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -120,9 +120,9 @@ public class March2 implements Runnable {
       } else if (curr == '+') {
 
         // Explicit positive numeric values
-        if (isNumericChar(offset + 1)) {
+        if (isNumericStartChar(contents.charAt(offset + 1))) {
           offset++;
-          consumeNumericToken(true);
+          consumeNumericToken('+');
           val next = contents.charAt(offset);
           if (isIdentStartCodePoint(next) && isIdentStartCodePoint(contents.charAt(offset + 1))) {
             consumeDimensionToken();
@@ -138,9 +138,9 @@ public class March2 implements Runnable {
 
         if (contents.indexOf("-->") == offset) {
           consumeCDCToken();
-        } else if (isNumericChar(offset + 1)) {
+        } else if (isNumericStartChar(contents.charAt(offset + 1))) {
           offset++;
-          consumeNumericToken(true);
+          consumeNumericToken('-');
           val next = contents.charAt(offset);
           if (isIdentStartCodePoint(next) && isIdentStartCodePoint(contents.charAt(offset + 1))) {
             consumeDimensionToken();
@@ -153,7 +153,18 @@ public class March2 implements Runnable {
           consumeDelimiterToken("-");
         }
       } else if (curr == '.') {
-        consumeDelimiterToken(".");
+        if (isNumericChar(contents.charAt(offset + 1))) {
+          offset++;
+          consumeNumericToken(null);
+          val next = contents.charAt(offset);
+          if (isIdentStartCodePoint(next) && isIdentStartCodePoint(contents.charAt(offset + 1))) {
+            consumeDimensionToken();
+          } else if (next == '%') {
+            consumePercentageToken();
+          }
+        } else {
+          consumeDelimiterToken(".");
+        }
       } else if (curr == ':') {
         consumeColonToken();
       } else if (curr == ';') {
@@ -177,13 +188,13 @@ public class March2 implements Runnable {
         consumeCurlyBracketToken(true);
       } else if (curr == '}') {
         consumeCurlyBracketToken(false);
-      } else if (isNumericChar(offset)) {
+      } else if (isNumericChar(curr)) {
         // Catch for comments range.
         if (isIgnoredIndex(offset)) {
           offset = skipIgnoredIndex(offset);
           continue;
         }
-        consumeNumericToken(false);
+        consumeNumericToken(null);
         val next = contents.charAt(offset);
         if (isIdentStartCodePoint(next) && isIdentStartCodePoint(contents.charAt(offset + 1))) {
           consumeDimensionToken();
@@ -226,9 +237,9 @@ public class March2 implements Runnable {
     offset += value.length();
   }
 
-  private void consumeNumericToken(boolean negative) {
+  private void consumeNumericToken(@Nullable Character prepend) {
     val start = getRowCol(offset);
-    val value = (negative ? "-" : "") + getNumericSequence(offset);
+    val value = (prepend != null ? prepend : "") + getNumericSequence(offset);
     val len = value.length();
     val end = getRowCol(offset + len);
     val ref = new WCReferenceRangeImpl(path, offset, len, start, end);
@@ -236,8 +247,12 @@ public class March2 implements Runnable {
     this.offset += value.length();
   }
 
-  private boolean isNumericChar(int offset) {
-    return Character.isDigit(contents.charAt(offset));
+  private boolean isNumericChar(char c) {
+    return Character.isDigit(c);
+  }
+
+  private boolean isNumericStartChar(char c) {
+    return c == '.' || Character.isDigit(c);
   }
 
   private void consumeCDOToken() {
@@ -411,10 +426,33 @@ public class March2 implements Runnable {
   @NotNull
   private String getNumericSequence(int offset) {
     val builder = new StringBuilder();
+    boolean hasDot = false;
+    boolean hasE = false;
     char curr;
     do {
       curr = contents.charAt(offset);
-      if (!isNumericChar(offset)) {
+      if (!hasE && !hasDot && curr == '.') {
+        char next = contents.charAt(offset + 1);
+        if (!isNumericChar(next)) break;
+        hasDot = true;
+        builder.append(curr);
+        offset++;
+        continue;
+      } else if (!hasE && (curr == 'E' || curr == 'e')) {
+        hasE = true;
+        char next = contents.charAt(offset + 1);
+        if (next == '+' || next == '-') {
+          char next2 = contents.charAt(offset + 2);
+          if (!isNumericChar(next2)) break;
+          builder.append(next).append(next2);
+          offset += 2;
+          continue;
+        }
+        if (!isNumericChar(next)) break;
+        builder.append(curr);
+        offset++;
+        continue;
+      } else if (!isNumericChar(curr)) {
         break;
       }
       builder.append(curr);
