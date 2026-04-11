@@ -5,6 +5,6 @@ import lombok.NonNull;
 
 public class WCSSRightCurlyBracketTokenImpl extends WCSSTokenImpl implements WCSSToken {
   public WCSSRightCurlyBracketTokenImpl(@NonNull WCReferenceRangeImpl ref) {
-    super(CSSTokenType.LEFT_SQUAREBRACKET, ref, "}", false, false);
+    super(CSSTokenType.RIGHT_CURLYBRACKET, ref, "}", false, false);
   }
 }

@@ -10,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -17,6 +18,7 @@ import static com.asledgehammer.webcalc.css.CSSUtils.PATTERN_NEWLINE;
 
 public class March2 implements Runnable {
 
+  private static final Pattern REGEX_HEX_DIGIT = Pattern.compile("[0-9A-Fa-f]");
   private static final Pattern REGEX_IDENT_CODE_POINT = Pattern.compile("[A-Za-z0-9_\\-]");
   private static final Pattern REGEX_IDENT_START_CODE_POINT = Pattern.compile("[A-Za-z_]");
   private static final int[] BLANK_ROW_COL = new int[] {1, 1};
@@ -182,6 +184,12 @@ public class March2 implements Runnable {
           continue;
         }
         consumeNumericToken(false);
+        val next = contents.charAt(offset);
+        if (isIdentStartCodePoint(next) && isIdentStartCodePoint(contents.charAt(offset + 1))) {
+          consumeDimensionToken();
+        } else if (next == '%') {
+          consumePercentageToken();
+        }
       } else if (isIdentStartSequence(offset)) {
         // Catch for comments range.
         if (isIgnoredIndex(offset)) {
@@ -358,7 +366,17 @@ public class March2 implements Runnable {
   }
 
   private void consumeHashToken() {
-    if (isIdentStartSequence(offset + 1)) {
+    if (isHashCharacter(offset + 1)) {
+      val hashSequence = getHashSequence(offset + 1);
+      int len = hashSequence.length();
+      val ref = new WCReferenceRangeImpl(path, offset, 1, getRowCol(offset), getRowCol(offset + 1));
+      val refHS =
+          new WCReferenceRangeImpl(
+              path, offset, len, getRowCol(offset + 1), getRowCol(offset + 1 + len));
+      tokens.add(new WCSSHashTokenImpl(ref));
+      tokens.add(new WCSSHashColorTokenImpl(refHS, hashSequence));
+      this.offset += len + 1;
+    } else if (isIdentStartSequence(offset + 1)) {
       val identitySequence = getIdentitySequence(offset + 1);
       int len = identitySequence.length();
       val ref = new WCReferenceRangeImpl(path, offset, 1, getRowCol(offset), getRowCol(offset + 1));
@@ -371,6 +389,23 @@ public class March2 implements Runnable {
     } else {
       consumeDelimiterToken("#");
     }
+  }
+
+  private boolean isHashCharacter(int offset) {
+    return REGEX_HEX_DIGIT.matcher("" + contents.charAt(offset)).matches();
+  }
+
+  @NotNull
+  private String getHashSequence(int offset) {
+    val builder = new StringBuilder();
+    char curr;
+    do {
+      curr = contents.charAt(offset);
+      if (!isHashCharacter(offset)) break;
+      builder.append(curr);
+      offset++;
+    } while (offset < len && isHashCharacter(offset));
+    return builder.toString();
   }
 
   @NotNull
@@ -507,8 +542,6 @@ public class March2 implements Runnable {
     for (WCSSCommentBlockToken token : comments) {
       System.out.println(token);
     }
-    System.out.println("\nRanges: [" + rangesIgnored.size() + "]");
-    rangesIgnored.forEach(e -> System.out.println(e[0] + " -> " + e[1]));
     System.out.println("\nTokens: [" + tokens.size() + "]");
     for (WCSSToken token : tokens) {
       if (token.getType() == CSSTokenType.WHITESPACE) {
@@ -557,8 +590,8 @@ public class March2 implements Runnable {
       for (int row = 0; row < rows.length - 1; row++) {
         int rowIndexCurr = rows[row];
         int rowIndexNext = rows[row + 1];
-        if (rowIndexCurr <= index && rowIndexNext > index) {
-          result = new int[] {row + 1, (index - rowIndexCurr) + 1};
+        if (index < rowIndexNext) {
+          result = new int[] {row + 2, (index - rowIndexCurr) + 1};
           break;
         }
       }

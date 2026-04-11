@@ -1,13 +1,26 @@
 #search {
     /* Line in */
-    background-color: red;
-    color: white;
+    background-color: #02b;
+    color: rgba(255,255,255,0.5);
     padding:
             /* weird line comment */
             16px;
     content: 'Hello, my name is Mudd!';
 }
+
+
+
+.my-class {
+    color: green;
+    padding: 16px 32px;
+}
 /* Line
 trail */
+
+@media screen and (min-width: 420px) {
+    .my-class {
+        color: blue;
+    }
+}
 
 /* Unfinished

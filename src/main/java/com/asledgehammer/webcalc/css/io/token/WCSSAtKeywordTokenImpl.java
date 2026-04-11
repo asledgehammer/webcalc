@@ -9,7 +9,7 @@ public class WCSSAtKeywordTokenImpl extends WCSSTokenImpl implements WCSSAtKeywo
   @Getter private final @NonNull String identitySequence;
 
   public WCSSAtKeywordTokenImpl(@NonNull WCReferenceRangeImpl ref, @NonNull String identitySequence) {
-    super(CSSTokenType.AT_KEYWORD, ref, "#" + identitySequence, false, false);
+    super(CSSTokenType.AT_KEYWORD, ref, "@" + identitySequence, false, false);
     this.identitySequence = identitySequence;
   }
 }
