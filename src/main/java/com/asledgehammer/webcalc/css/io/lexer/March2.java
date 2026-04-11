@@ -153,18 +153,7 @@ public class March2 implements Runnable {
           consumeDelimiterToken("-");
         }
       } else if (curr == '.') {
-        if (isNumericChar(contents.charAt(offset + 1))) {
-          offset++;
-          consumeNumericToken(null);
-          val next = contents.charAt(offset);
-          if (isIdentStartCodePoint(next) && isIdentStartCodePoint(contents.charAt(offset + 1))) {
-            consumeDimensionToken();
-          } else if (next == '%') {
-            consumePercentageToken();
-          }
-        } else {
-          consumeDelimiterToken(".");
-        }
+        consumeDotToken();
       } else if (curr == ':') {
         consumeColonToken();
       } else if (curr == ';') {
@@ -380,6 +369,31 @@ public class March2 implements Runnable {
     }
   }
 
+  private void consumeDotToken() {
+    if (isNumericChar(contents.charAt(offset + 1))) {
+      offset++;
+      consumeNumericToken(null);
+      val next = contents.charAt(offset);
+      if (isIdentStartCodePoint(next) && isIdentStartCodePoint(contents.charAt(offset + 1))) {
+        consumeDimensionToken();
+      } else if (next == '%') {
+        consumePercentageToken();
+      }
+    } else if (isIdentStartSequence(offset + 1)) {
+      val identitySequence = getIdentitySequence(offset + 1);
+      int len = identitySequence.length();
+      val ref = new WCReferenceRangeImpl(path, offset, 1, getRowCol(offset), getRowCol(offset + 1));
+      val refIS =
+          new WCReferenceRangeImpl(
+              path, offset, len, getRowCol(offset + 1), getRowCol(offset + 1 + len));
+      tokens.add(new WCSSDotTokenImpl(ref));
+      tokens.add(new WCSSIdentTokenImpl(refIS, identitySequence));
+      this.offset += len + 1;
+    } else {
+      consumeDelimiterToken(".");
+    }
+  }
+
   private void consumeHashToken() {
     if (isHashCharacter(offset + 1)) {
       val hashSequence = getHashSequence(offset + 1);
@@ -467,7 +481,7 @@ public class March2 implements Runnable {
     char curr;
     do {
       curr = contents.charAt(offset);
-      if (!isIdentStartCodePoint(curr)) {
+      if (!isIdentCodePoint(curr)) {
         break;
       }
       builder.append(curr);
