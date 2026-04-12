@@ -1,8 +1,13 @@
 package com.asledgehammer.webcalc.io.token;
 
-import org.jetbrains.annotations.NotNull;
+import lombok.Getter;
+import lombok.NonNull;
 
-public interface WCToken {
-  String getContents();
-  boolean isGeneric();
+public class WCToken {
+
+  @Getter private final @NonNull String contents;
+
+  WCToken(@NonNull String contents) {
+    this.contents = contents;
+  }
 }

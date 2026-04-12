@@ -1,8 +1,8 @@
-package com.asledgehammer.webcalc.css.io.lexer;
+package com.asledgehammer.webcalc.css.io;
 
 import com.asledgehammer.webcalc.css.io.token.*;
 import com.asledgehammer.webcalc.io.WCParseError;
-import com.asledgehammer.webcalc.io.token.WCReferenceRangeImpl;
+import com.asledgehammer.webcalc.io.token.WCReferenceRange;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.val;
@@ -14,10 +14,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import static com.asledgehammer.webcalc.css.CSSUtils.PATTERN_NEWLINE;
+public class WCSSLexer implements Runnable {
 
-public class March2 implements Runnable {
-
+  private static final Pattern PATTERN_NEWLINE = Pattern.compile("(\n|\r\n|\r|\f)");
   private static final Pattern REGEX_HEX_DIGIT = Pattern.compile("[0-9A-Fa-f]");
   private static final Pattern REGEX_IDENT_CODE_POINT = Pattern.compile("[A-Za-z0-9_\\-]");
   private static final Pattern REGEX_IDENT_START_CODE_POINT = Pattern.compile("[A-Za-z_]");
@@ -25,16 +24,17 @@ public class March2 implements Runnable {
 
   @Getter private final List<WCSSCommentBlockToken> comments = new ArrayList<>();
   @Getter private final List<WCSSToken> tokens = new ArrayList<>();
-  @Getter private final List<int[]> rangesIgnored = new ArrayList<>();
   @Getter private final List<WCParseError> errors = new ArrayList<>();
-  @Getter private final int[] rowIndexes;
+  @Getter private final String contents;
+  @Getter private final @Nullable URL path;
 
-  private final String contents;
-  private final @NonNull URL path;
+  private final List<int[]> rangesIgnored = new ArrayList<>();
+  private final int[] rowIndexes;
   private int offset = 0;
   private final int len;
+  private boolean ran;
 
-  public March2(@NonNull URL path, @NonNull final String contents) {
+  public WCSSLexer(@Nullable URL path, @NonNull final String contents) {
     if (contents.isEmpty()) {
       throw new IllegalArgumentException("contents must not be empty");
     }
@@ -44,7 +44,24 @@ public class March2 implements Runnable {
     this.rowIndexes = getRowIndexes(contents);
   }
 
+  public void debug() {
+    System.out.println("Comments: [" + comments.size() + "]");
+    for (WCSSCommentBlockToken token : comments) {
+      System.out.println(token);
+    }
+    System.out.println("\nTokens: [" + tokens.size() + "]");
+    for (WCSSToken token : tokens) {
+      if (token.getType() == CSSTokenType.WHITESPACE) {
+        continue;
+      }
+      System.out.println(token);
+    }
+  }
+
+  @Override
   public void run() {
+    if (ran) return;
+    ran = true;
     marchComments();
     marchTokens();
   }
@@ -64,9 +81,9 @@ public class March2 implements Runnable {
         val comment = contents.substring(indexStart, indexEnd);
         val start = getRowCol(indexStart);
         val end = getRowCol(indexEnd);
-        val ref = new WCReferenceRangeImpl(path, indexStart, comment.length(), start, end);
+        val ref = new WCReferenceRange(path, indexStart, comment.length(), start, end);
         errors.add(new WCParseError(ref, "Unclosed comment block"));
-        comments.add(new WCSSCommentBlockTokenImpl(ref, comment));
+        comments.add(new WCSSCommentBlockToken(ref, comment));
         break;
       }
 
@@ -76,8 +93,8 @@ public class March2 implements Runnable {
       val comment = contents.substring(indexStart, indexEnd);
       val start = getRowCol(indexStart);
       val end = getRowCol(indexEnd);
-      val ref = new WCReferenceRangeImpl(path, indexStart, comment.length(), start, end);
-      comments.add(new WCSSCommentBlockTokenImpl(ref, comment));
+      val ref = new WCReferenceRange(path, indexStart, comment.length(), start, end);
+      comments.add(new WCSSCommentBlockToken(ref, comment));
       indexStart = indexEnd;
     }
 
@@ -226,8 +243,8 @@ public class March2 implements Runnable {
         }
         if (next == '"' || next == '\'') {
           val end = getRowCol(offset + len + 1);
-          val ref = new WCReferenceRangeImpl(path, offset, len + 1, start, end);
-          tokens.add(new WCSSFunctionTokenImpl(ref, leading));
+          val ref = new WCReferenceRange(path, offset, len + 1, start, end);
+          tokens.add(new WCSSFunctionToken(ref, leading));
           offset += len + 1;
           return;
         }
@@ -237,16 +254,16 @@ public class March2 implements Runnable {
       }
     } else if (curr == '(') {
       val end = getRowCol(offset + len + 1);
-      val ref = new WCReferenceRangeImpl(path, offset, len + 1, start, end);
-      tokens.add(new WCSSFunctionTokenImpl(ref, leading));
+      val ref = new WCReferenceRange(path, offset, len + 1, start, end);
+      tokens.add(new WCSSFunctionToken(ref, leading));
       offset += len + 1;
       return;
     }
 
     // No <function-token>, <url-token> or <bad-url-token>
     val end = getRowCol(offset + len);
-    val ref = new WCReferenceRangeImpl(path, offset, len, start, end);
-    tokens.add(new WCSSIdentTokenImpl(ref, leading));
+    val ref = new WCReferenceRange(path, offset, len, start, end);
+    tokens.add(new WCSSToken(CSSTokenType.IDENTITY, ref, leading));
     this.offset += len;
   }
 
@@ -277,55 +294,38 @@ public class March2 implements Runnable {
     if (isEOS()) {
       val len = value.length();
       val end = getRowCol(this.len - 1);
-      val ref = new WCReferenceRangeImpl(path, offsetStart, len + 4, start, end);
-      tokens.add(new WCSSURLTokenImpl(ref, value, true));
-      // EOS position.
+      val ref = new WCReferenceRange(path, offsetStart, len + 4, start, end);
+      tokens.add(new WCSSURLToken(ref, value, true));
       offset = this.len;
       return;
-    } else if (bad) {
-      val len = value.length();
-      val end = getRowCol(offset);
-      val ref = new WCReferenceRangeImpl(path, offsetStart, len + 4, start, end);
-      tokens.add(new WCSSURLTokenImpl(ref, value, true));
-      // EOS position.
     }
 
+    offset++; // Skip ')'
     val len = value.length();
-    val end = getRowCol(this.len - 1);
-    val ref = new WCReferenceRangeImpl(path, offsetStart, len + 4, start, end);
-    tokens.add(new WCSSURLTokenImpl(ref, value, false));
+    val end = getRowCol(offset + 1);
+    val ref = new WCReferenceRange(path, offsetStart, len + 4, start, end);
+    tokens.add(new WCSSURLToken(ref, value, bad));
   }
 
-  private boolean isEOS() {
-    return offset >= len;
+  private void consumeToken(@NonNull CSSTokenType type, @NonNull String contents) {
+    val len = contents.length();
+    val start = getRowCol(offset);
+    val end = getRowCol(offset + len);
+    val ref = new WCReferenceRange(path, offset, len, start, end);
+    tokens.add(new WCSSToken(type, ref, contents));
+    offset += len;
   }
 
   private void consumePercentageToken() {
-    val start = getRowCol(offset);
-    val end = getRowCol(offset + 1);
-    val ref = new WCReferenceRangeImpl(path, offset, 1, start, end);
-    tokens.add(new WCSSPercentageTokenImpl(ref));
-    offset++;
+    consumeToken(CSSTokenType.PERCENTAGE, "%");
   }
 
   private void consumeDimensionToken() {
-    val start = getRowCol(offset);
-    val value = getIdentitySequence(offset);
-    val len = value.length();
-    val end = getRowCol(offset + len);
-    val ref = new WCReferenceRangeImpl(path, offset, len, start, end);
-    tokens.add(new WCSSDimensionTokenImpl(ref, value));
-    offset += value.length();
+    consumeToken(CSSTokenType.DIMENSION, getIdentitySequence(offset));
   }
 
   private void consumeNumericToken(@Nullable Character prepend) {
-    val start = getRowCol(offset);
-    val value = (prepend != null ? prepend : "") + getNumericSequence(offset);
-    val len = value.length();
-    val end = getRowCol(offset + len);
-    val ref = new WCReferenceRangeImpl(path, offset, len, start, end);
-    tokens.add(new WCSSNumericTokenImpl(ref, value));
-    this.offset += value.length();
+    consumeToken(CSSTokenType.NUMERIC, getNumericSequence(offset));
   }
 
   private boolean isNumericChar(char c) {
@@ -337,94 +337,51 @@ public class March2 implements Runnable {
   }
 
   private void consumeCDOToken() {
-    val start = getRowCol(offset);
-    val end = getRowCol(offset + 4);
-    val value = contents.substring(offset, offset + 4);
-    val len = value.length();
-    val ref = new WCReferenceRangeImpl(path, offset, len, start, end);
-    tokens.add(new WCSSCDOTokenImpl(ref));
-    offset += 4;
+    consumeToken(CSSTokenType.CDO, "<!--");
   }
 
   private void consumeCDCToken() {
-    val start = getRowCol(offset);
-    val end = getRowCol(offset + 3);
-    val value = contents.substring(offset, offset + 3);
-    val len = value.length();
-    val ref = new WCReferenceRangeImpl(path, offset, len, start, end);
-    tokens.add(new WCSSCDOTokenImpl(ref));
-    offset += 3;
+    consumeToken(CSSTokenType.CDO, "-->");
   }
 
   private void consumeDelimiterToken(@NotNull String delimiter) {
-    if (delimiter.equals("1")) {
-      throw new RuntimeException(delimiter);
-    }
-    val start = getRowCol(offset);
-    val end = getRowCol(offset + 1);
-    val ref = new WCReferenceRangeImpl(path, offset, 1, start, end);
-    tokens.add(new WCSSDelimiterTokenImpl(ref, delimiter));
-    offset++;
+    consumeToken(CSSTokenType.DELIMITER, delimiter);
   }
 
   private void consumeParenthesisToken(boolean left) {
-    val start = getRowCol(offset);
-    val end = getRowCol(offset + 1);
-    val ref = new WCReferenceRangeImpl(path, offset, 1, start, end);
     if (left) {
-      tokens.add(new WCSSLeftParenthesisTokenImpl(ref));
+      consumeToken(CSSTokenType.LEFT_PARENTHESIS, "(");
     } else {
-      tokens.add(new WCSSRightParenthesisTokenImpl(ref));
+      consumeToken(CSSTokenType.RIGHT_PARENTHESIS, ")");
     }
-    offset++;
   }
 
   private void consumeSquareBracketToken(boolean left) {
-    val start = getRowCol(offset);
-    val end = getRowCol(offset + 1);
-    val ref = new WCReferenceRangeImpl(path, offset, 1, start, end);
     if (left) {
-      tokens.add(new WCSSLeftSquareBracketTokenImpl(ref));
+      consumeToken(CSSTokenType.LEFT_SQUAREBRACKET, "[");
     } else {
-      tokens.add(new WCSSRightSquareBracketTokenImpl(ref));
+      consumeToken(CSSTokenType.RIGHT_SQUAREBRACKET, "]");
     }
-    offset++;
   }
 
   private void consumeCurlyBracketToken(boolean left) {
-    val start = getRowCol(offset);
-    val end = getRowCol(offset + 1);
-    val ref = new WCReferenceRangeImpl(path, offset, 1, start, end);
     if (left) {
-      tokens.add(new WCSSLeftCurlyBracketTokenImpl(ref));
+      consumeToken(CSSTokenType.LEFT_CURLYBRACKET, "{");
     } else {
-      tokens.add(new WCSSRightCurlyBracketTokenImpl(ref));
+      consumeToken(CSSTokenType.RIGHT_CURLYBRACKET, "}");
     }
-    offset++;
   }
 
   private void consumeCommaToken() {
-    val start = getRowCol(offset);
-    val end = getRowCol(offset + 1);
-    val ref = new WCReferenceRangeImpl(path, offset, 1, start, end);
-    tokens.add(new WCSSCommaTokenImpl(ref));
-    offset++;
+    consumeToken(CSSTokenType.COMMA, ",");
   }
 
   private void consumeColonToken() {
-    val start = getRowCol(offset);
-    val end = getRowCol(offset + 1);
-    val ref = new WCReferenceRangeImpl(path, offset, 1, start, end);
-    tokens.add(new WCSSColonTokenImpl(ref));
-    offset++;
+    consumeToken(CSSTokenType.COLON, ":");
   }
 
   private void consumeSemicolonToken() {
-    val start = getRowCol(offset);
-    val end = getRowCol(offset + 1);
-    val ref = new WCReferenceRangeImpl(path, offset, 1, start, end);
-    tokens.add(new WCSSSemicolonTokenImpl(ref));
-    offset++;
+    consumeToken(CSSTokenType.SEMICOLON, ";");
   }
 
   private void consumeWhitespace() {
@@ -442,8 +399,8 @@ public class March2 implements Runnable {
     val value = builder.toString();
     val len = value.length();
     val end = getRowCol(offset);
-    val ref = new WCReferenceRangeImpl(path, offset, len, start, end);
-    tokens.add(new WCSSWhiteSpaceTokenImpl(ref, value));
+    val ref = new WCReferenceRange(path, offset, len, start, end);
+    tokens.add(new WCSSToken(CSSTokenType.WHITESPACE, ref, value));
     this.offset += len;
   }
 
@@ -453,8 +410,8 @@ public class March2 implements Runnable {
       val identitySequence = getIdentitySequence(offset + 1);
       val len = identitySequence.length() + 1;
       val end = getRowCol(offset + identitySequence.length());
-      val ref = new WCReferenceRangeImpl(path, offset, len, start, end);
-      tokens.add(new WCSSAtKeywordTokenImpl(ref, identitySequence));
+      val ref = new WCReferenceRange(path, offset, len, start, end);
+      tokens.add(new WCSSAtKeywordToken(ref, identitySequence));
       this.offset += len;
     } else {
       consumeDelimiterToken("@");
@@ -474,12 +431,12 @@ public class March2 implements Runnable {
     } else if (isIdentStartSequence(offset + 1)) {
       val identitySequence = getIdentitySequence(offset + 1);
       int len = identitySequence.length();
-      val ref = new WCReferenceRangeImpl(path, offset, 1, getRowCol(offset), getRowCol(offset + 1));
+      val ref = new WCReferenceRange(path, offset, 1, getRowCol(offset), getRowCol(offset + 1));
       val refIS =
-          new WCReferenceRangeImpl(
+          new WCReferenceRange(
               path, offset, len, getRowCol(offset + 1), getRowCol(offset + 1 + len));
-      tokens.add(new WCSSDotTokenImpl(ref));
-      tokens.add(new WCSSIdentTokenImpl(refIS, identitySequence));
+      tokens.add(new WCSSToken(CSSTokenType.DOT, ref, "."));
+      tokens.add(new WCSSToken(CSSTokenType.IDENTITY, refIS, identitySequence));
       this.offset += len + 1;
     } else {
       consumeDelimiterToken(".");
@@ -490,30 +447,26 @@ public class March2 implements Runnable {
     if (isHashCharacter(offset + 1)) {
       val hashSequence = getHashSequence(offset + 1);
       int len = hashSequence.length();
-      val ref = new WCReferenceRangeImpl(path, offset, 1, getRowCol(offset), getRowCol(offset + 1));
+      val ref = new WCReferenceRange(path, offset, 1, getRowCol(offset), getRowCol(offset + 1));
       val refHS =
-          new WCReferenceRangeImpl(
+          new WCReferenceRange(
               path, offset, len, getRowCol(offset + 1), getRowCol(offset + 1 + len));
-      tokens.add(new WCSSHashTokenImpl(ref));
-      tokens.add(new WCSSHashColorTokenImpl(refHS, hashSequence));
+      tokens.add(new WCSSToken(CSSTokenType.HASH, ref, "#"));
+      tokens.add(new WCSSToken(CSSTokenType.HEX_COLOR, refHS, hashSequence));
       this.offset += len + 1;
     } else if (isIdentStartSequence(offset + 1)) {
       val identitySequence = getIdentitySequence(offset + 1);
       int len = identitySequence.length();
-      val ref = new WCReferenceRangeImpl(path, offset, 1, getRowCol(offset), getRowCol(offset + 1));
+      val ref = new WCReferenceRange(path, offset, 1, getRowCol(offset), getRowCol(offset + 1));
       val refIS =
-          new WCReferenceRangeImpl(
+          new WCReferenceRange(
               path, offset, len, getRowCol(offset + 1), getRowCol(offset + 1 + len));
-      tokens.add(new WCSSHashTokenImpl(ref));
-      tokens.add(new WCSSIdentTokenImpl(refIS, identitySequence));
+      tokens.add(new WCSSToken(CSSTokenType.HASH, ref, "#"));
+      tokens.add(new WCSSToken(CSSTokenType.IDENTITY, refIS, identitySequence));
       this.offset += len + 1;
     } else {
       consumeDelimiterToken("#");
     }
-  }
-
-  private boolean isHashCharacter(int offset) {
-    return REGEX_HEX_DIGIT.matcher("" + contents.charAt(offset)).matches();
   }
 
   @NotNull
@@ -599,8 +552,8 @@ public class March2 implements Runnable {
     val end = getRowCol(offset);
     val value = builder.toString();
     val len = value.length();
-    val ref = new WCReferenceRangeImpl(path, offset, len, start, end);
-    tokens.add(new WCSSIdentTokenImpl(ref, value));
+    val ref = new WCReferenceRange(path, offset, len, start, end);
+    tokens.add(new WCSSToken(CSSTokenType.IDENTITY, ref, value));
     this.offset += len;
   }
 
@@ -628,8 +581,8 @@ public class March2 implements Runnable {
     val contents = builder.toString();
     val len = contents.length();
     val end = getRowCol(offset);
-    val ref = new WCReferenceRangeImpl(path, offset, len, start, end);
-    WCSSStringToken token = new WCSSStringTokenImpl(ref, contents, casing, bad);
+    val ref = new WCReferenceRange(path, offset, len, start, end);
+    WCSSStringToken token = new WCSSStringToken(ref, contents, casing, bad);
     tokens.add(token);
     this.offset += len;
   }
@@ -677,29 +630,17 @@ public class March2 implements Runnable {
     throw new RuntimeException("There be dragons.");
   }
 
-  public int[] getRowCol(int offset) {
+  private int[] getRowCol(int offset) {
     return getRowCol(rowIndexes, offset);
   }
 
-  public void debug() {
-    System.out.println("Comments: [" + comments.size() + "]");
-    for (WCSSCommentBlockToken token : comments) {
-      System.out.println(token);
-    }
-    System.out.println("\nTokens: [" + tokens.size() + "]");
-    for (WCSSToken token : tokens) {
-      if (token.getType() == CSSTokenType.WHITESPACE) {
-        continue;
+  private int skipIgnoredIndex(int index) {
+    for (final int[] range : this.rangesIgnored) {
+      if (range[0] <= index && index <= range[1]) {
+        return range[1] + 1;
       }
-      System.out.println(token);
     }
-  }
-
-  private boolean isWhitespaceChar(int index) {
-    return switch (contents.charAt(index)) {
-      case '\f', '\n', '\r', '\t', ' ' -> true;
-      default -> false;
-    };
+    return index;
   }
 
   private boolean isIgnoredIndex(int index) {
@@ -711,13 +652,19 @@ public class March2 implements Runnable {
     return false;
   }
 
-  private int skipIgnoredIndex(int index) {
-    for (final int[] range : this.rangesIgnored) {
-      if (range[0] <= index && index <= range[1]) {
-        return range[1] + 1;
-      }
-    }
-    return index;
+  private boolean isWhitespaceChar(int index) {
+    return switch (contents.charAt(index)) {
+      case '\f', '\n', '\r', '\t', ' ' -> true;
+      default -> false;
+    };
+  }
+
+  private boolean isHashCharacter(int offset) {
+    return REGEX_HEX_DIGIT.matcher("" + contents.charAt(offset)).matches();
+  }
+
+  private boolean isEOS() {
+    return offset >= len;
   }
 
   public static int[] getRowCol(int[] rows, int index) {
