@@ -177,7 +177,9 @@ public class March2 implements Runnable {
         consumeCurlyBracketToken(true);
       } else if (curr == '}') {
         consumeCurlyBracketToken(false);
-      } else if (isNumericChar(curr)) {
+      }
+      // TODO: Parse `url(` without string and try to recover from bad URLs.
+      else if (isNumericChar(curr)) {
         // Catch for comments range.
         if (isIgnoredIndex(offset)) {
           offset = skipIgnoredIndex(offset);
@@ -196,7 +198,7 @@ public class March2 implements Runnable {
           offset = skipIgnoredIndex(offset);
           continue;
         }
-        consumeIdentityToken();
+        consumeIdentLikeToken();
       } else {
         // Catch for comments range.
         if (isIgnoredIndex(offset)) {
@@ -206,6 +208,96 @@ public class March2 implements Runnable {
         consumeDelimiterToken("" + curr);
       }
     }
+  }
+
+  /** <a href="https://www.w3.org/TR/css-syntax-3/#consume-ident-like-token">W3 Docs</a> */
+  private void consumeIdentLikeToken() {
+    val start = getRowCol(offset);
+    val leading = getIdentitySequence(offset);
+    val len = leading.length();
+    char curr = contents.charAt(offset + len);
+
+    // W3 docs says this is a case-sensitive scenario.
+    if (leading.equals("url")) {
+      if (curr == '(') {
+        char next = contents.charAt(offset + len + 1);
+        if (isWhitespaceChar(offset + len + 1)) {
+          consumeWhitespace();
+        }
+        if (next == '"' || next == '\'') {
+          val end = getRowCol(offset + len + 1);
+          val ref = new WCReferenceRangeImpl(path, offset, len + 1, start, end);
+          tokens.add(new WCSSFunctionTokenImpl(ref, leading));
+          offset += len + 1;
+          return;
+        }
+        offset += len + 1;
+        consumeUrlToken();
+        return;
+      }
+    } else if (curr == '(') {
+      val end = getRowCol(offset + len + 1);
+      val ref = new WCReferenceRangeImpl(path, offset, len + 1, start, end);
+      tokens.add(new WCSSFunctionTokenImpl(ref, leading));
+      offset += len + 1;
+      return;
+    }
+
+    // No <function-token>, <url-token> or <bad-url-token>
+    val end = getRowCol(offset + len);
+    val ref = new WCReferenceRangeImpl(path, offset, len, start, end);
+    tokens.add(new WCSSIdentTokenImpl(ref, leading));
+    this.offset += len;
+  }
+
+  private void consumeUrlToken() {
+    val offsetStart = offset - 4;
+    val start = getRowCol(offsetStart);
+    val builder = new StringBuilder();
+    if (isWhitespaceChar(offset)) {
+      consumeWhitespace();
+    }
+
+    boolean bad = false;
+    char last = 0;
+    char curr;
+    do {
+      curr = contents.charAt(offset);
+      if (last != '\\' && curr == ')') {
+        break;
+      } else if (last != '\\' && (curr == '\"' || curr == '\'' || curr == '(')) {
+        bad = true;
+      }
+      builder.append(curr);
+      last = curr;
+      offset++;
+    } while (!isEOS());
+    String value = builder.toString().trim();
+
+    if (isEOS()) {
+      val len = value.length();
+      val end = getRowCol(this.len - 1);
+      val ref = new WCReferenceRangeImpl(path, offsetStart, len + 4, start, end);
+      tokens.add(new WCSSURLTokenImpl(ref, value, true));
+      // EOS position.
+      offset = this.len;
+      return;
+    } else if (bad) {
+      val len = value.length();
+      val end = getRowCol(offset);
+      val ref = new WCReferenceRangeImpl(path, offsetStart, len + 4, start, end);
+      tokens.add(new WCSSURLTokenImpl(ref, value, true));
+      // EOS position.
+    }
+
+    val len = value.length();
+    val end = getRowCol(this.len - 1);
+    val ref = new WCReferenceRangeImpl(path, offsetStart, len + 4, start, end);
+    tokens.add(new WCSSURLTokenImpl(ref, value, false));
+  }
+
+  private boolean isEOS() {
+    return offset >= len;
   }
 
   private void consumePercentageToken() {
@@ -338,7 +430,7 @@ public class March2 implements Runnable {
   private void consumeWhitespace() {
     int offset = this.offset;
     val start = getRowCol(offset);
-    StringBuilder builder = new StringBuilder();
+    val builder = new StringBuilder();
     char curr;
     do {
       curr = contents.charAt(offset);

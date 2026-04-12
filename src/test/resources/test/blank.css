@@ -20,7 +20,7 @@ trail */
 @media screen and (min-width: 420px) {
     .my-class {
         color: blue;
-        background-image: url("https://www.google.com/");
+        background-image: url(https://www.google.com/);
     }
 }
 
