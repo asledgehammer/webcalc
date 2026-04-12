@@ -6,14 +6,13 @@
             /* weird line comment */
             16px;
     content: 'Hello, my name is Mudd!';
+
+    .my-class {
+        color: green;
+        padding: 16px 32px;
+    }
 }
 
-
-
-.my-class {
-    color: green;
-    padding: 16px 32px;
-}
 /* Line
 trail */
 
