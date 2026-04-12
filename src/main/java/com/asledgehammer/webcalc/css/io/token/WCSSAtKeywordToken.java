@@ -10,7 +10,7 @@ public class WCSSAtKeywordToken extends WCSSToken {
 
   public WCSSAtKeywordToken(
           @NonNull WCReferenceRange ref, @NonNull String identitySequence) {
-    super(CSSTokenType.AT_KEYWORD, ref, "@" + identitySequence);
+    super(CSSTokenType.AT, ref, "@" + identitySequence);
     this.identitySequence = identitySequence;
   }
 }

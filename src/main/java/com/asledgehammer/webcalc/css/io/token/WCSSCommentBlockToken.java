@@ -22,7 +22,7 @@ public class WCSSCommentBlockToken extends WCSSToken {
 
   @Override
   public String toString() {
-    return getReference()
+    return "     " + getReference()
         + "[BLOCK_COMMENT] :: \""
         + getContents()
             .replaceAll("\r\n", "\\\\r\\\\n")

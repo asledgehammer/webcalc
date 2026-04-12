@@ -22,16 +22,4 @@ public class WCSSStringToken extends WCSSToken {
     this.bad = bad;
     this.value = contents.substring(1, contents.length() - 1);
   }
-
-  @Override
-  public String toString() {
-    val enclosingChar = enclosingCharacter;
-    return getReference()
-        + "[STRING]"
-        + (bad ? "[BAD]" : "")
-        + " :: "
-        + enclosingChar
-        + value
-        + enclosingChar;
-  }
 }

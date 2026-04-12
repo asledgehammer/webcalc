@@ -131,9 +131,9 @@ public class WCSSLexer implements Runnable {
       } else if (curr == '\'') {
         consumeStringToken('\'');
       } else if (curr == '(') {
-        consumeParenthesisToken(true);
+        consumeToken(CSSTokenType.LEFT_PARENTHESIS, "(");
       } else if (curr == ')') {
-        consumeParenthesisToken(false);
+        consumeToken(CSSTokenType.RIGHT_PARENTHESIS, ")");
       } else if (curr == '+') {
 
         // Explicit positive numeric values
@@ -150,11 +150,11 @@ public class WCSSLexer implements Runnable {
           consumeDelimiterToken("+");
         }
       } else if (curr == ',') {
-        consumeCommaToken();
+        consumeToken(CSSTokenType.COMMA, ",");
       } else if (curr == '-') {
 
         if (contents.indexOf("-->") == offset) {
-          consumeCDCToken();
+          consumeToken(CSSTokenType.CDO, "-->");
         } else if (isNumericStartChar(contents.charAt(offset + 1))) {
           offset++;
           consumeNumericToken('-');
@@ -172,28 +172,28 @@ public class WCSSLexer implements Runnable {
       } else if (curr == '.') {
         consumeDotToken();
       } else if (curr == ':') {
-        consumeColonToken();
+        consumeToken(CSSTokenType.COLON, ":");
       } else if (curr == ';') {
-        consumeSemicolonToken();
+        consumeToken(CSSTokenType.SEMICOLON, ";");
       } else if (curr == '<') {
         if (contents.indexOf("<!--") == offset) {
-          consumeCDOToken();
+          consumeToken(CSSTokenType.CDO, "<!--");
         } else {
           consumeDelimiterToken("<");
         }
       } else if (curr == '@') {
         consumeAtToken();
       } else if (curr == '[') {
-        consumeSquareBracketToken(true);
+        consumeToken(CSSTokenType.LEFT_SQUAREBRACKET, "[");
       } else if (curr == '\\') {
         // I think this is only a parse error at this point??
         consumeDelimiterToken("\\");
       } else if (curr == ']') {
-        consumeSquareBracketToken(false);
+        consumeToken(CSSTokenType.RIGHT_SQUAREBRACKET, "]");
       } else if (curr == '{') {
-        consumeCurlyBracketToken(true);
+        consumeToken(CSSTokenType.LEFT_CURLYBRACKET, "{");
       } else if (curr == '}') {
-        consumeCurlyBracketToken(false);
+        consumeToken(CSSTokenType.RIGHT_CURLYBRACKET, "}");
       }
       // TODO: Parse `url(` without string and try to recover from bad URLs.
       else if (isNumericChar(curr)) {
@@ -328,62 +328,6 @@ public class WCSSLexer implements Runnable {
     consumeToken(CSSTokenType.NUMERIC, getNumericSequence(offset));
   }
 
-  private boolean isNumericChar(char c) {
-    return Character.isDigit(c);
-  }
-
-  private boolean isNumericStartChar(char c) {
-    return c == '.' || Character.isDigit(c);
-  }
-
-  private void consumeCDOToken() {
-    consumeToken(CSSTokenType.CDO, "<!--");
-  }
-
-  private void consumeCDCToken() {
-    consumeToken(CSSTokenType.CDO, "-->");
-  }
-
-  private void consumeDelimiterToken(@NotNull String delimiter) {
-    consumeToken(CSSTokenType.DELIMITER, delimiter);
-  }
-
-  private void consumeParenthesisToken(boolean left) {
-    if (left) {
-      consumeToken(CSSTokenType.LEFT_PARENTHESIS, "(");
-    } else {
-      consumeToken(CSSTokenType.RIGHT_PARENTHESIS, ")");
-    }
-  }
-
-  private void consumeSquareBracketToken(boolean left) {
-    if (left) {
-      consumeToken(CSSTokenType.LEFT_SQUAREBRACKET, "[");
-    } else {
-      consumeToken(CSSTokenType.RIGHT_SQUAREBRACKET, "]");
-    }
-  }
-
-  private void consumeCurlyBracketToken(boolean left) {
-    if (left) {
-      consumeToken(CSSTokenType.LEFT_CURLYBRACKET, "{");
-    } else {
-      consumeToken(CSSTokenType.RIGHT_CURLYBRACKET, "}");
-    }
-  }
-
-  private void consumeCommaToken() {
-    consumeToken(CSSTokenType.COMMA, ",");
-  }
-
-  private void consumeColonToken() {
-    consumeToken(CSSTokenType.COLON, ":");
-  }
-
-  private void consumeSemicolonToken() {
-    consumeToken(CSSTokenType.SEMICOLON, ";");
-  }
-
   private void consumeWhitespace() {
     int offset = this.offset;
     val start = getRowCol(offset);
@@ -405,14 +349,9 @@ public class WCSSLexer implements Runnable {
   }
 
   private void consumeAtToken() {
-    val start = getRowCol(offset);
     if (isIdentStartSequence(offset + 1)) {
-      val identitySequence = getIdentitySequence(offset + 1);
-      val len = identitySequence.length() + 1;
-      val end = getRowCol(offset + identitySequence.length());
-      val ref = new WCReferenceRange(path, offset, len, start, end);
-      tokens.add(new WCSSAtKeywordToken(ref, identitySequence));
-      this.offset += len;
+      consumeToken(CSSTokenType.AT, "@");
+      consumeIdentityToken();
     } else {
       consumeDelimiterToken("@");
     }
@@ -467,6 +406,62 @@ public class WCSSLexer implements Runnable {
     } else {
       consumeDelimiterToken("#");
     }
+  }
+
+  private void consumeIdentityToken() {
+    int offset = this.offset;
+    val builder = new StringBuilder();
+    val start = getRowCol(offset);
+    char curr;
+    do {
+      curr = contents.charAt(offset);
+      if (!isIdentCodePoint(curr)) {
+        break;
+      }
+      builder.append(curr);
+      offset++;
+    } while (offset < len);
+    offset--;
+    val end = getRowCol(offset);
+    val value = builder.toString();
+    val len = value.length();
+    val ref = new WCReferenceRange(path, offset, len, start, end);
+    tokens.add(new WCSSToken(CSSTokenType.IDENTITY, ref, value));
+    this.offset += len;
+  }
+
+  private void consumeStringToken(char casing) {
+    int offset = this.offset;
+    val builder = new StringBuilder().append(casing);
+    val start = getRowCol(offset++);
+    boolean backslashLast;
+    boolean backslash = false;
+    boolean bad = false;
+    char curr;
+    do {
+      curr = contents.charAt(offset++);
+      builder.append(curr);
+      backslashLast = backslash;
+      backslash = curr == '\\';
+
+      if (!backslashLast && (curr == '\r' || curr == '\n')) {
+        bad = true;
+        break;
+      }
+
+    } while (backslashLast || curr != casing);
+
+    val contents = builder.toString();
+    val len = contents.length();
+    val end = getRowCol(offset);
+    val ref = new WCReferenceRange(path, offset, len, start, end);
+    WCSSStringToken token = new WCSSStringToken(ref, contents, casing, bad);
+    tokens.add(token);
+    this.offset += len;
+  }
+
+  private void consumeDelimiterToken(@NotNull String delimiter) {
+    consumeToken(CSSTokenType.DELIMITER, delimiter);
   }
 
   @NotNull
@@ -535,58 +530,6 @@ public class WCSSLexer implements Runnable {
     return builder.toString();
   }
 
-  private void consumeIdentityToken() {
-    int offset = this.offset;
-    val builder = new StringBuilder();
-    val start = getRowCol(offset);
-    char curr;
-    do {
-      curr = contents.charAt(offset);
-      if (!isIdentCodePoint(curr)) {
-        break;
-      }
-      builder.append(curr);
-      offset++;
-    } while (offset < len);
-    offset--;
-    val end = getRowCol(offset);
-    val value = builder.toString();
-    val len = value.length();
-    val ref = new WCReferenceRange(path, offset, len, start, end);
-    tokens.add(new WCSSToken(CSSTokenType.IDENTITY, ref, value));
-    this.offset += len;
-  }
-
-  private void consumeStringToken(char casing) {
-    int offset = this.offset;
-    val builder = new StringBuilder().append(casing);
-    val start = getRowCol(offset++);
-    boolean backslashLast;
-    boolean backslash = false;
-    boolean bad = false;
-    char curr;
-    do {
-      curr = contents.charAt(offset++);
-      builder.append(curr);
-      backslashLast = backslash;
-      backslash = curr == '\\';
-
-      if (!backslashLast && (curr == '\r' || curr == '\n')) {
-        bad = true;
-        break;
-      }
-
-    } while (backslashLast || curr != casing);
-
-    val contents = builder.toString();
-    val len = contents.length();
-    val end = getRowCol(offset);
-    val ref = new WCReferenceRange(path, offset, len, start, end);
-    WCSSStringToken token = new WCSSStringToken(ref, contents, casing, bad);
-    tokens.add(token);
-    this.offset += len;
-  }
-
   private boolean isValidEscapeSequence(int offset) {
     char curr = contents.charAt(offset);
     if (curr == '\\') {
@@ -622,16 +565,16 @@ public class WCSSLexer implements Runnable {
     else return isValidEscapeSequence(offset);
   }
 
-  private int getNextNewlineIndex(int index) {
-    if (rowIndexes.length <= 1 || len == 0) return -1;
-    for (int next : rowIndexes) {
-      if (index < next) return next;
-    }
-    throw new RuntimeException("There be dragons.");
-  }
-
   private int[] getRowCol(int offset) {
     return getRowCol(rowIndexes, offset);
+  }
+
+  private boolean isNumericChar(char c) {
+    return Character.isDigit(c);
+  }
+
+  private boolean isNumericStartChar(char c) {
+    return c == '.' || Character.isDigit(c);
   }
 
   private int skipIgnoredIndex(int index) {

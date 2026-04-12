@@ -28,7 +28,8 @@ public class WCSSToken extends WCReferencedToken {
 
   @Override
   public String toString() {
-    return getReference()
+    return (bad ? "[BAD]" : "     ")
+        + getReference()
         + "["
         + getType().name()
         + "] :: \""
